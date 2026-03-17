@@ -1,6 +1,6 @@
 import type { AICharacter, Emotion, ChatMessage, ChatEvent } from '../types';
 
-const PROXY_URL = 'http://localhost:3001/api/chat';
+const PROXY_URL = '/api/chat';
 
 const EMOTION_LIST = 'neutral, happy, sad, angry, surprised, love, shy, excited';
 
