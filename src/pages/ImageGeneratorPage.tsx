@@ -6,6 +6,29 @@ import type { AICharacter, Emotion } from '../types';
 import type { ImageStyle } from '../services/geminiImageService';
 
 const EMOTIONS: Emotion[] = ['neutral', 'happy', 'sad', 'angry', 'surprised', 'love', 'shy', 'excited'];
+
+// Compress base64 image to reduce localStorage usage
+function compressImage(dataUrl: string, maxSize = 200, quality = 0.7): Promise<string> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      let { width, height } = img;
+      if (width > height) {
+        if (width > maxSize) { height = (height * maxSize) / width; width = maxSize; }
+      } else {
+        if (height > maxSize) { width = (width * maxSize) / height; height = maxSize; }
+      }
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d')!;
+      ctx.drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = () => resolve(dataUrl); // fallback to original
+    img.src = dataUrl;
+  });
+}
 const EMOTION_LABELS: Record<Emotion, string> = {
   neutral: '평온',
   happy: '기쁨',
@@ -73,20 +96,38 @@ export default function ImageGeneratorPage() {
     setCurrentGenEmotion(null);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (Object.keys(generatedImages).length === 0) return;
 
     const character = getCharacterById(selectedCharId);
     if (!character) return;
 
-    const updated: AICharacter = {
-      ...character,
-      imageExpressions: { ...character.imageExpressions, ...generatedImages },
-      useImageMode: true,
-    };
+    setError('');
 
-    saveCharacter(updated);
-    setSaved(true);
+    try {
+      // Compress images before saving to localStorage
+      const compressed: Partial<Record<Emotion, string>> = {};
+      for (const [emotion, dataUrl] of Object.entries(generatedImages)) {
+        if (dataUrl) {
+          compressed[emotion as Emotion] = await compressImage(dataUrl);
+        }
+      }
+
+      const updated: AICharacter = {
+        ...character,
+        imageExpressions: { ...character.imageExpressions, ...compressed },
+        useImageMode: true,
+      };
+
+      saveCharacter(updated);
+      setSaved(true);
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'QuotaExceededError') {
+        setError('저장 공간이 부족합니다. 다른 캐릭터의 이미지를 삭제하거나 감정 수를 줄여보세요.');
+      } else {
+        setError(`저장 실패: ${err instanceof Error ? err.message : '알 수 없는 오류'}`);
+      }
+    }
   };
 
   const handleRemoveImage = (emotion: Emotion) => {
