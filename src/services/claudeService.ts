@@ -184,8 +184,20 @@ export async function generateClaudeResponse(
     };
   } catch (err) {
     console.error('Claude API error:', err);
-    const { generateResponse } = await import('../data/mockResponses');
-    return generateResponse(userMessage, character, history);
+
+    // Show API error in chat for debugging (remove in production)
+    try {
+      const testRes = await fetch(PROXY_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+      const testData = await testRes.text();
+      console.error('API test response:', testRes.status, testData);
+    } catch (testErr) {
+      console.error('API endpoint unreachable:', testErr);
+    }
+
+    return {
+      text: `[API 오류] ${err instanceof Error ? err.message : String(err)} — mock 응답을 대신 사용하려면 새로고침하세요.`,
+      emotion: 'neutral' as Emotion,
+    };
   }
 }
 
