@@ -30,7 +30,7 @@ export default function VisualNovelView({ messages, character, currentEmotion, i
   const theme = emotionThemes[currentEmotion];
   const lastCharMessage = [...messages].reverse().find((m) => m.sender === 'character');
   const fullText = lastCharMessage?.text || character.greeting;
-  const timerRef = useRef<ReturnType<typeof setTimeout>>();
+  const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   useEffect(() => {
     setIsRevealing(true);

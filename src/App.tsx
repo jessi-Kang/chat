@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { HashRouter, Routes, Route } from 'react-router-dom';
 import { PersonaProvider } from './context/PersonaContext';
 import { ChatProvider } from './context/ChatContext';
 import HomePage from './pages/HomePage';
@@ -10,7 +10,7 @@ import ImageGeneratorPage from './pages/ImageGeneratorPage';
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <HashRouter>
       <PersonaProvider>
         <ChatProvider>
           <Routes>
@@ -24,6 +24,6 @@ export default function App() {
           </Routes>
         </ChatProvider>
       </PersonaProvider>
-    </BrowserRouter>
+    </HashRouter>
   );
 }
