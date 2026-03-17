@@ -40,30 +40,26 @@ const EMOTION_PROMPTS: Record<Emotion, string> = {
   excited: 'excited enthusiastic expression, bright eyes',
 };
 
-const API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent';
-
 export async function generateCharacterImage(
   characterPrompt: string,
   style: ImageStyle,
   emotion: Emotion,
 ): Promise<string> {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-  if (!apiKey) {
-    throw new Error('VITE_GEMINI_API_KEY가 설정되지 않았습니다. .env 파일을 확인해주세요.');
-  }
-
   const styleConfig = IMAGE_STYLES.find((s) => s.key === style);
   const emotionPrompt = EMOTION_PROMPTS[emotion];
 
   const fullPrompt = `Generate a character portrait image. Style: ${styleConfig?.prompt || ''}. Character: ${characterPrompt}. Expression: ${emotionPrompt}. Single character, bust shot, clean background, high quality.`;
 
-  const response = await fetch(`${API_URL}?key=${apiKey}`, {
+  const response = await fetch('/api/gemini', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      contents: [{ parts: [{ text: fullPrompt }] }],
-      generationConfig: {
-        responseModalities: ['IMAGE'],
+      model: 'gemini-2.0-flash-exp',
+      body: {
+        contents: [{ parts: [{ text: fullPrompt }] }],
+        generationConfig: {
+          responseModalities: ['IMAGE'],
+        },
       },
     }),
   });
