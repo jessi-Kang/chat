@@ -155,7 +155,7 @@ export async function generateClaudeResponse(
   ];
 
   const body = {
-    model: 'claude-haiku-4-20250414',
+    model: 'claude-3-5-haiku-20241022',
     max_tokens: 256,
     system: buildSystemPrompt(character, history),
     messages,
