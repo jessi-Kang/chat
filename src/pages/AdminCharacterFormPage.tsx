@@ -1,7 +1,7 @@
 import { useState, CSSProperties } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { getCharacterById, saveCharacter, getCharacters } from '../data/characters';
-import type { AICharacter, Emotion, ResponsePattern } from '../types';
+import type { AICharacter, Emotion, ResponsePattern, CharacterProfile, SecretStory, ChatEvent } from '../types';
 
 const EMOTIONS: Emotion[] = ['neutral', 'happy', 'sad', 'angry', 'surprised', 'love', 'shy', 'excited'];
 const EMOTION_LABELS: Record<Emotion, string> = {
@@ -47,6 +47,9 @@ function createEmptyCharacter(): AICharacter {
       excited: '🤩',
     },
     responsePatterns: [],
+    profile: {},
+    secretStories: [],
+    chatEvents: [],
   };
 }
 
@@ -120,12 +123,73 @@ export default function AdminCharacterFormPage() {
     update('responsePatterns', patterns);
   };
 
+  // Profile helpers
+  const updateProfile = (key: keyof CharacterProfile, value: string) => {
+    update('profile', { ...(char.profile || {}), [key]: value });
+  };
+
+  // Secret story helpers
+  const addSecret = () => {
+    const secrets = char.secretStories || [];
+    update('secretStories', [
+      ...secrets,
+      { id: `secret-${Date.now()}`, title: '', content: '', revealCondition: '' },
+    ]);
+  };
+
+  const removeSecret = (idx: number) => {
+    update('secretStories', (char.secretStories || []).filter((_, i) => i !== idx));
+  };
+
+  const updateSecret = (idx: number, patch: Partial<SecretStory>) => {
+    const secrets = [...(char.secretStories || [])];
+    secrets[idx] = { ...secrets[idx], ...patch };
+    update('secretStories', secrets);
+  };
+
+  // Chat event helpers
+  const addEvent = () => {
+    const events = char.chatEvents || [];
+    update('chatEvents', [
+      ...events,
+      {
+        id: `event-${Date.now()}`,
+        name: '',
+        triggerType: 'message_count' as const,
+        triggerValue: '',
+        action: '',
+        emotion: 'neutral' as Emotion,
+        oneShot: true,
+      },
+    ]);
+  };
+
+  const removeEvent = (idx: number) => {
+    update('chatEvents', (char.chatEvents || []).filter((_, i) => i !== idx));
+  };
+
+  const updateEvent = (idx: number, patch: Partial<ChatEvent>) => {
+    const events = [...(char.chatEvents || [])];
+    events[idx] = { ...events[idx], ...patch };
+    update('chatEvents', events);
+  };
+
+  const TRIGGER_TYPES: { value: ChatEvent['triggerType']; label: string; hint: string }[] = [
+    { value: 'message_count', label: '메시지 수', hint: '예: 10 (10번째 메시지에서 발동)' },
+    { value: 'keyword', label: '키워드', hint: '예: 비밀,과거 (쉼표로 구분)' },
+    { value: 'emotion_count', label: '감정 횟수', hint: '예: happy:5 (기쁨 5회 이상)' },
+    { value: 'time_elapsed', label: '경과 시간(분)', hint: '예: 30 (30분 경과 후)' },
+  ];
+
   const sections = [
-    { key: 'basic', label: '기본 정보' },
+    { key: 'basic', label: '기본' },
     { key: 'style', label: '스타일' },
     { key: 'expressions', label: '표정' },
     { key: 'traits', label: '성격' },
-    { key: 'patterns', label: '응답 패턴' },
+    { key: 'patterns', label: '응답' },
+    { key: 'profile', label: '프로필' },
+    { key: 'secrets', label: '시크릿' },
+    { key: 'events', label: '이벤트' },
   ];
 
   return (
@@ -364,6 +428,220 @@ export default function AdminCharacterFormPage() {
 
           <button style={styles.addPatternBtn} onClick={addPattern}>
             + 응답 패턴 추가
+          </button>
+        </div>
+      )}
+
+      {/* Profile section */}
+      {activeSection === 'profile' && (
+        <div style={styles.section}>
+          <p style={styles.hint}>캐릭터의 상세 프로필을 설정하세요. Claude가 대화 시 참고합니다.</p>
+
+          <label style={styles.label}>나이</label>
+          <input
+            style={styles.input}
+            value={char.profile?.age || ''}
+            onChange={(e) => updateProfile('age', e.target.value)}
+            placeholder="예: 25세, 200살, 불명"
+          />
+
+          <label style={styles.label}>성별</label>
+          <input
+            style={styles.input}
+            value={char.profile?.gender || ''}
+            onChange={(e) => updateProfile('gender', e.target.value)}
+            placeholder="예: 여성, 남성, 무성"
+          />
+
+          <label style={styles.label}>직업/역할</label>
+          <input
+            style={styles.input}
+            value={char.profile?.occupation || ''}
+            onChange={(e) => updateProfile('occupation', e.target.value)}
+            placeholder="예: 마법사, 카페 점원, 학생"
+          />
+
+          <label style={styles.label}>말투</label>
+          <textarea
+            style={styles.textarea}
+            value={char.profile?.speechStyle || ''}
+            onChange={(e) => updateProfile('speechStyle', e.target.value)}
+            placeholder={"예: 존댓말을 사용하며 조용히 말함. ~요 체를 사용. 가끔 고양이처럼 '냥' 을 붙임"}
+            rows={3}
+          />
+
+          <label style={styles.label}>배경 스토리</label>
+          <textarea
+            style={styles.textarea}
+            value={char.profile?.background || ''}
+            onChange={(e) => updateProfile('background', e.target.value)}
+            placeholder="캐릭터의 과거, 현재 상황, 세계관 등을 설명해주세요"
+            rows={4}
+          />
+
+          <label style={styles.label}>좋아하는 것</label>
+          <input
+            style={styles.input}
+            value={char.profile?.likes || ''}
+            onChange={(e) => updateProfile('likes', e.target.value)}
+            placeholder="예: 고양이, 비 오는 날, 따뜻한 차"
+          />
+
+          <label style={styles.label}>싫어하는 것</label>
+          <input
+            style={styles.input}
+            value={char.profile?.dislikes || ''}
+            onChange={(e) => updateProfile('dislikes', e.target.value)}
+            placeholder="예: 시끄러운 곳, 거짓말, 매운 음식"
+          />
+
+          <label style={styles.label}>추가 지시사항 (커스텀 프롬프트)</label>
+          <textarea
+            style={styles.textarea}
+            value={char.profile?.customPrompt || ''}
+            onChange={(e) => updateProfile('customPrompt', e.target.value)}
+            placeholder={"자유롭게 캐릭터에게 추가 지시를 내릴 수 있습니다.\n예: 사용자가 칭찬하면 매우 부끄러워하세요.\n예: 절대 반말을 하지 마세요."}
+            rows={4}
+          />
+        </div>
+      )}
+
+      {/* Secret Stories section */}
+      {activeSection === 'secrets' && (
+        <div style={styles.section}>
+          <p style={styles.hint}>
+            대화 중 조건을 충족하면 자연스럽게 드러나는 숨겨진 설정을 만드세요.
+          </p>
+
+          {(char.secretStories || []).map((secret, si) => (
+            <div key={secret.id} style={styles.patternCard}>
+              <div style={styles.patternHeader}>
+                <span style={styles.patternTitle}>시크릿 #{si + 1}</span>
+                <button style={styles.removePatternBtn} onClick={() => removeSecret(si)}>
+                  삭제
+                </button>
+              </div>
+
+              <label style={styles.smallLabel}>제목</label>
+              <input
+                style={styles.input}
+                value={secret.title}
+                onChange={(e) => updateSecret(si, { title: e.target.value })}
+                placeholder="예: 숨겨진 과거"
+              />
+
+              <label style={styles.smallLabel}>비밀 내용</label>
+              <textarea
+                style={styles.textarea}
+                value={secret.content}
+                onChange={(e) => updateSecret(si, { content: e.target.value })}
+                placeholder="캐릭터가 숨기고 있는 비밀의 상세 내용"
+                rows={3}
+              />
+
+              <label style={styles.smallLabel}>공개 조건</label>
+              <input
+                style={styles.input}
+                value={secret.revealCondition}
+                onChange={(e) => updateSecret(si, { revealCondition: e.target.value })}
+                placeholder="예: 사용자가 과거에 대해 3번 이상 물어보면"
+              />
+            </div>
+          ))}
+
+          <button style={styles.addPatternBtn} onClick={addSecret}>
+            + 시크릿 스토리 추가
+          </button>
+        </div>
+      )}
+
+      {/* Events section */}
+      {activeSection === 'events' && (
+        <div style={styles.section}>
+          <p style={styles.hint}>
+            대화 중 특정 조건에서 자동으로 발동되는 이벤트를 설정하세요.
+          </p>
+
+          {(char.chatEvents || []).map((ev, ei) => (
+            <div key={ev.id} style={styles.patternCard}>
+              <div style={styles.patternHeader}>
+                <span style={styles.patternTitle}>이벤트 #{ei + 1}</span>
+                <button style={styles.removePatternBtn} onClick={() => removeEvent(ei)}>
+                  삭제
+                </button>
+              </div>
+
+              <label style={styles.smallLabel}>이벤트 이름</label>
+              <input
+                style={styles.input}
+                value={ev.name}
+                onChange={(e) => updateEvent(ei, { name: e.target.value })}
+                placeholder="예: 갑작스러운 고백"
+              />
+
+              <label style={styles.smallLabel}>트리거 타입</label>
+              <select
+                style={styles.select}
+                value={ev.triggerType}
+                onChange={(e) =>
+                  updateEvent(ei, { triggerType: e.target.value as ChatEvent['triggerType'] })
+                }
+              >
+                {TRIGGER_TYPES.map((tt) => (
+                  <option key={tt.value} value={tt.value}>
+                    {tt.label}
+                  </option>
+                ))}
+              </select>
+
+              <label style={styles.smallLabel}>
+                트리거 값 ({TRIGGER_TYPES.find((t) => t.value === ev.triggerType)?.hint})
+              </label>
+              <input
+                style={styles.input}
+                value={ev.triggerValue}
+                onChange={(e) => updateEvent(ei, { triggerValue: e.target.value })}
+                placeholder={TRIGGER_TYPES.find((t) => t.value === ev.triggerType)?.hint}
+              />
+
+              <label style={styles.smallLabel}>이벤트 행동 (캐릭터가 할 행동)</label>
+              <textarea
+                style={styles.textarea}
+                value={ev.action}
+                onChange={(e) => updateEvent(ei, { action: e.target.value })}
+                placeholder="예: 갑자기 얼굴이 빨개지며 사용자에게 고백한다"
+                rows={2}
+              />
+
+              <label style={styles.smallLabel}>감정</label>
+              <select
+                style={styles.select}
+                value={ev.emotion}
+                onChange={(e) => updateEvent(ei, { emotion: e.target.value as Emotion })}
+              >
+                {EMOTIONS.map((em) => (
+                  <option key={em} value={em}>
+                    {EMOTION_LABELS[em]}
+                  </option>
+                ))}
+              </select>
+
+              <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <input
+                  type="checkbox"
+                  checked={ev.oneShot}
+                  onChange={(e) => updateEvent(ei, { oneShot: e.target.checked })}
+                  id={`oneshot-${ei}`}
+                />
+                <label htmlFor={`oneshot-${ei}`} style={{ fontSize: 13, color: '#555' }}>
+                  한 번만 발동 (체크 해제 시 조건 충족할 때마다 반복)
+                </label>
+              </div>
+            </div>
+          ))}
+
+          <button style={styles.addPatternBtn} onClick={addEvent}>
+            + 이벤트 추가
           </button>
         </div>
       )}

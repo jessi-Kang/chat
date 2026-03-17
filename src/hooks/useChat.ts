@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import type { AICharacter, ChatMessage } from '../types';
 import { useChatContext } from '../context/ChatContext';
-import { generateResponse } from '../data/mockResponses';
+import { generateClaudeResponse } from '../services/claudeService';
 
 export function useChat(character: AICharacter) {
   const { getSession, addMessage, initSession } = useChatContext();
@@ -35,7 +35,7 @@ export function useChat(character: AICharacter) {
       addMessage(character.id, userMsg);
       setIsTyping(true);
 
-      const { text: responseText, emotion } = await generateResponse(text, character, messages);
+      const { text: responseText, emotion } = await generateClaudeResponse(text, character, messages);
 
       const charMsg: ChatMessage = {
         id: `char-${Date.now()}`,
